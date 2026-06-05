@@ -1,0 +1,27 @@
+## .NET / C#
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Visual Studio
+.vs/
+
+## Build output
+*.dll
+*.pdb
+*.exe
+
+## NuGet
+*.nupkg
+**/packages/
+
+## Engine build outputs (only track the DLLs we explicitly publish)
+engines/unity/*.deps.json
+engines/unity/*.pdb
+engines/godot/*.deps.json
+engines/godot/*.pdb
+engines/cocos-creator/*.deps.json
+engines/cocos-creator/*.pdb
