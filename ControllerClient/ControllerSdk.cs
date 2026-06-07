@@ -27,11 +27,13 @@ namespace ControllerClient
         public event Action<String> OnCommand;
         public event Action<bool> OnConnectionStateChanged;
         public event Action<ScreenshotResult> OnScreenshot;
+        public event Action<GpxExportResult> OnGpxExported;
 
         public bool IsConnected => ws != null && ws.State == WebSocketState.Open;
 
         private MotionIntent lastIntent;
         private long lastMotionTime;
+        private long _lastGpxLocationSendTime;
 
         public Controller(MotionSettings settings = null)
         {
@@ -91,6 +93,107 @@ namespace ControllerClient
                 packetType = "captureScreen",
                 timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
                 payload = new { mode = "window", title = windowTitle }
+            });
+            _ = SendAsync(json);
+        }
+
+        // ---------- GPX Recording API ----------
+
+        /// <summary>
+        /// Start GPX recording with a random trail using the server's default start point.
+        /// The trail advances based on the phone sensor's step cadence.
+        /// </summary>
+        public void StartGpx()
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                packetType = "gpxStart",
+                timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                payload = new { }
+            });
+            _ = SendAsync(json);
+        }
+
+        /// <summary>
+        /// Start GPX recording. When manualLocation is true, the game must send
+        /// character positions via <see cref="UpdateGpxLocation"/> instead of
+        /// relying on the random trail.
+        /// Uses the server's default start point.
+        /// </summary>
+        public void StartGpx(bool manualLocation)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                packetType = "gpxStart",
+                timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                payload = new { manualLocation }
+            });
+            _ = SendAsync(json);
+        }
+
+        /// <summary>
+        /// Start GPX recording with a random trail from the given start coordinates.
+        /// The trail advances based on the phone sensor's step cadence.
+        /// </summary>
+        public void StartGpx(double lat, double lon)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                packetType = "gpxStart",
+                timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                payload = new { lat, lon }
+            });
+            _ = SendAsync(json);
+        }
+
+        /// <summary>
+        /// Start GPX recording. When manualLocation is true, the game must send
+        /// character positions via <see cref="UpdateGpxLocation"/> instead of
+        /// relying on the random trail.
+        /// </summary>
+        public void StartGpx(double lat, double lon, bool manualLocation)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                packetType = "gpxStart",
+                timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                payload = new { lat, lon, manualLocation }
+            });
+            _ = SendAsync(json);
+        }
+
+        /// <summary>
+        /// Send the game character's current location to the PC server for GPX recording.
+        /// Only effective when GPX was started in manual-location mode.
+        /// Throttled client-side to ~2Hz (calls within 500ms are dropped).
+        /// </summary>
+        public void UpdateGpxLocation(double lat, double lon)
+        {
+            long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (_lastGpxLocationSendTime > 0 && (now - _lastGpxLocationSendTime) < 500)
+                return;
+            _lastGpxLocationSendTime = now;
+
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                packetType = "gpxUpdateLocation",
+                timeStamp = now,
+                payload = new { lat, lon }
+            });
+            _ = SendAsync(json);
+        }
+
+        /// <summary>
+        /// Export the current GPX session to a file on the PC server.
+        /// The result is delivered asynchronously via the <see cref="OnGpxExported"/> event.
+        /// </summary>
+        public void ExportGpx()
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                packetType = "gpxExport",
+                timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                payload = new { }
             });
             _ = SendAsync(json);
         }
@@ -217,7 +320,7 @@ namespace ControllerClient
                         break;
 
                     case "screenshot":
-                        var screenshot = JsonSerializer.Deserialize<ScreenshotPacket>(json, jsonOptions);
+                        var screenshot = System.Text.Json.JsonSerializer.Deserialize<ScreenshotPacket>(json, jsonOptions);
                         if (screenshot != null)
                         {
                             var result = new ScreenshotResult
@@ -227,6 +330,27 @@ namespace ControllerClient
                                 Height = screenshot.Height
                             };
                             Enqueue(() => OnScreenshot?.Invoke(result));
+                        }
+                        break;
+
+                    case "gpxStarted":
+                        // GPX session started — no event needed, but logged for debugging
+                        var gpxStarted = System.Text.Json.JsonSerializer.Deserialize<GpxStartedPacket>(json, jsonOptions);
+                        Debug.WriteLine($"GPX started: mode={gpxStarted?.Mode}, error={gpxStarted?.Error}");
+                        break;
+
+                    case "gpxExported":
+                        var gpxExported = System.Text.Json.JsonSerializer.Deserialize<GpxExportedPacket>(json, jsonOptions);
+                        if (gpxExported != null)
+                        {
+                            var gpxResult = new GpxExportResult
+                            {
+                                FilePath = gpxExported.Path,
+                                DistanceKm = gpxExported.Distance,
+                                Duration = gpxExported.Duration,
+                                Error = gpxExported.Error
+                            };
+                            Enqueue(() => OnGpxExported?.Invoke(gpxResult));
                         }
                         break;
                 }

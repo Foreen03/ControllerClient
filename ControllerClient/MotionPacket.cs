@@ -7,6 +7,8 @@ namespace ControllerClient
     [JsonDerivedType(typeof(MovementPacket), "movement")]
     [JsonDerivedType(typeof(CommandPacket), "command")]
     [JsonDerivedType(typeof(ScreenshotPacket), "screenshot")]
+    [JsonDerivedType(typeof(GpxStartedPacket), "gpxStarted")]
+    [JsonDerivedType(typeof(GpxExportedPacket), "gpxExported")]
     public class Packet
     {
         [JsonPropertyName("timestamp")]
@@ -50,5 +52,29 @@ namespace ControllerClient
 
         [JsonPropertyName("height")]
         public int Height { get; set; }
+    }
+
+    public sealed class GpxStartedPacket : Packet
+    {
+        [JsonPropertyName("mode")]
+        public string Mode { get; set; }
+
+        [JsonPropertyName("error")]
+        public string Error { get; set; }
+    }
+
+    public sealed class GpxExportedPacket : Packet
+    {
+        [JsonPropertyName("path")]
+        public string Path { get; set; }
+
+        [JsonPropertyName("distance")]
+        public double Distance { get; set; }
+
+        [JsonPropertyName("duration")]
+        public string Duration { get; set; }
+
+        [JsonPropertyName("error")]
+        public string Error { get; set; }
     }
 }
