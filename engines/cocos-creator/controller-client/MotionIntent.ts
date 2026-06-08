@@ -23,3 +23,17 @@ export const MOTION_INTENT_ZERO: Readonly<MotionIntent> = Object.freeze({
     rawSteps: 0,
     stepsCadence: 0,
 });
+
+export interface ScreenshotResult {
+    filePath: string;
+    width: number;
+    height: number;
+}
+
+export interface GpxExportResult {
+    filePath: string;
+    distanceKm: number;
+    duration: string;
+    error?: string;
+}
+

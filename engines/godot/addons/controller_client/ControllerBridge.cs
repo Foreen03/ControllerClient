@@ -67,10 +67,21 @@ public partial class ControllerBridge : Node
     [Signal]
     public delegate void ConnectionStateChangedEventHandler(bool connected);
 
+    /// <summary>Emitted when a screenshot result is received.</summary>
+    [Signal]
+    public delegate void ScreenshotReceivedEventHandler(string filePath, int width, int height);
+
+    /// <summary>Emitted when a GPX export result is received.</summary>
+    [Signal]
+    public delegate void GpxExportedEventHandler(string filePath, double distanceKm, string duration, string error);
+
     // ── Public State ──
 
     /// <summary>The underlying engine-agnostic controller instance.</summary>
     public Controller Controller { get; private set; }
+
+    /// <summary>Exposes the active MotionSettings instance.</summary>
+    public MotionSettings Settings { get; private set; }
 
     /// <summary>Last received motion intent. Read this in <c>_Process()</c> or <c>_PhysicsProcess()</c>.</summary>
     public MotionIntent LastMotion { get; private set; }
@@ -82,18 +93,10 @@ public partial class ControllerBridge : Node
 
     public override void _Ready()
     {
-        var settings = new MotionSettings
-        {
-            MaxTilt = MaxTilt,
-            DeadZone = DeadZone,
-            SteeringSmoothing = SteeringSmoothing,
-            TurnSpeedDeg = TurnSpeedDeg,
-            StepImpulse = StepImpulse,
-            MaxMove = MaxMove,
-            MoveDamping = MoveDamping,
-        };
+        Settings = new MotionSettings();
+        SyncSettings();
 
-        Controller = new Controller(settings);
+        Controller = new Controller(Settings);
 
         Controller.OnMotion += (intent) =>
         {
@@ -115,13 +118,42 @@ public partial class ControllerBridge : Node
             EmitSignal(SignalName.ConnectionStateChanged, isConnected);
         };
 
+        Controller.OnScreenshot += (result) =>
+        {
+            EmitSignal(SignalName.ScreenshotReceived, result.FilePath, result.Width, result.Height);
+        };
+
+        Controller.OnGpxExported += (result) =>
+        {
+            EmitSignal(SignalName.GpxExported, result.FilePath, result.DistanceKm, result.Duration, result.Error);
+        };
+
         Controller.Connect(Url);
         GD.Print($"[ControllerBridge] Connecting to {Url}...");
     }
 
     public override void _Process(double delta)
     {
+        SyncSettings();
         Controller?.Dispatch();
+    }
+
+    /// <summary>
+    /// Synchronizes the Godot Node properties to the underlying MotionSettings instance.
+    /// This allows changing parameters dynamically at runtime (e.g. from the Inspector or scripts).
+    /// </summary>
+    public void SyncSettings()
+    {
+        if (Settings != null)
+        {
+            Settings.MaxTilt = MaxTilt;
+            Settings.DeadZone = DeadZone;
+            Settings.SteeringSmoothing = SteeringSmoothing;
+            Settings.TurnSpeedDeg = TurnSpeedDeg;
+            Settings.StepImpulse = StepImpulse;
+            Settings.MaxMove = MaxMove;
+            Settings.MoveDamping = MoveDamping;
+        }
     }
 
     public override void _ExitTree()
@@ -136,5 +168,59 @@ public partial class ControllerBridge : Node
     public bool IsActionPressed(string action)
     {
         return Controller?.Actions.Get(action) ?? false;
+    }
+
+    /// <summary>Request a full-monitor screenshot from the PC server.</summary>
+    public void CaptureScreen()
+    {
+        Controller?.CaptureScreen();
+    }
+
+    /// <summary>Request a window-only screenshot from the PC server (active window if true).</summary>
+    public void CaptureScreen(bool windowMode)
+    {
+        Controller?.CaptureScreen(windowMode);
+    }
+
+    /// <summary>Request a screenshot of a specific window by its title.</summary>
+    public void CaptureScreen(string windowTitle)
+    {
+        Controller?.CaptureScreen(windowTitle);
+    }
+
+    /// <summary>Start GPX recording with simulated route at server default origin.</summary>
+    public void StartGpx()
+    {
+        Controller?.StartGpx();
+    }
+
+    /// <summary>Start GPX recording at server default origin. If manualLocation is true, character positions must be updated via UpdateGpxLocation.</summary>
+    public void StartGpx(bool manualLocation)
+    {
+        Controller?.StartGpx(manualLocation);
+    }
+
+    /// <summary>Start GPX recording with simulated route at specified origin.</summary>
+    public void StartGpx(double lat, double lon)
+    {
+        Controller?.StartGpx(lat, lon);
+    }
+
+    /// <summary>Start GPX recording at specified origin. If manualLocation is true, character positions must be updated via UpdateGpxLocation.</summary>
+    public void StartGpx(double lat, double lon, bool manualLocation)
+    {
+        Controller?.StartGpx(lat, lon, manualLocation);
+    }
+
+    /// <summary>Updates the current GPX location in manual route mode. Automatically throttled.</summary>
+    public void UpdateGpxLocation(double lat, double lon)
+    {
+        Controller?.UpdateGpxLocation(lat, lon);
+    }
+
+    /// <summary>Export the recorded GPX trail to the PC server.</summary>
+    public void ExportGpx()
+    {
+        Controller?.ExportGpx();
     }
 }

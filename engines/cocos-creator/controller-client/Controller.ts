@@ -1,8 +1,8 @@
-import { MotionIntent, MOTION_INTENT_ZERO } from './MotionIntent';
+import { MotionIntent, MOTION_INTENT_ZERO, ScreenshotResult, GpxExportResult } from './MotionIntent';
 import { MotionSettings } from './MotionSettings';
 import { MotionProcessor } from './MotionProcessor';
 import { ActionState } from './ActionState';
-import { MovementPacket, CommandPacket, TypedPacket } from './MotionPacket';
+import { MovementPacket, CommandPacket, TypedPacket, ScreenshotPacket, GpxStartedPacket, GpxExportedPacket } from './MotionPacket';
 
 /**
  * Engine-agnostic controller client.
@@ -44,6 +44,10 @@ export class Controller {
     onCommand: ((command: string) => void) | null = null;
     /** Fired when the connection state changes. */
     onConnectionStateChanged: ((connected: boolean) => void) | null = null;
+    /** Fired when a screenshot is received. */
+    onScreenshot: ((result: ScreenshotResult) => void) | null = null;
+    /** Fired when a GPX export is completed. */
+    onGpxExported: ((result: GpxExportResult) => void) | null = null;
 
     /** Whether the WebSocket is currently open. */
     get isConnected(): boolean {
@@ -139,6 +143,36 @@ export class Controller {
                     }
                     break;
                 }
+                case 'screenshot': {
+                    const pkt = typed as unknown as ScreenshotPacket;
+                    if (pkt) {
+                        const result: ScreenshotResult = {
+                            filePath: pkt.path,
+                            width: pkt.width,
+                            height: pkt.height
+                        };
+                        this._enqueue(() => this.onScreenshot?.(result));
+                    }
+                    break;
+                }
+                case 'gpxStarted': {
+                    const pkt = typed as unknown as GpxStartedPacket;
+                    console.log(`[Controller] GPX started: mode=${pkt?.mode}, error=${pkt?.error}`);
+                    break;
+                }
+                case 'gpxExported': {
+                    const pkt = typed as unknown as GpxExportedPacket;
+                    if (pkt) {
+                        const result: GpxExportResult = {
+                            filePath: pkt.path,
+                            distanceKm: pkt.distance,
+                            duration: pkt.duration,
+                            error: pkt.error
+                        };
+                        this._enqueue(() => this.onGpxExported?.(result));
+                    }
+                    break;
+                }
             }
         } catch (e) {
             console.warn('[ControllerClient] Invalid message:', e);
@@ -200,7 +234,7 @@ export class Controller {
     }
 
     // ── Cleanup ──
-
+ 
     /**
      * Disconnect and release all resources.
      */
@@ -208,5 +242,93 @@ export class Controller {
         this.disposed = true;
         this._closeSocket();
         this.mainThreadQueue.length = 0;
+    }
+
+    // ── Private Send Helper ──
+    private _send(json: string): void {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            try {
+                this.ws.send(json);
+            } catch (e) {
+                console.error('[ControllerClient] send error:', e);
+            }
+        }
+    }
+
+    // ── Screenshot APIs ──
+
+    captureScreen(): void;
+    captureScreen(windowMode: boolean): void;
+    captureScreen(windowTitle: string): void;
+    captureScreen(arg?: boolean | string): void {
+        let mode = 'monitor';
+        let title: string | undefined;
+
+        if (typeof arg === 'boolean') {
+            mode = arg ? 'window' : 'monitor';
+        } else if (typeof arg === 'string') {
+            mode = 'window';
+            title = arg;
+        }
+
+        const json = JSON.stringify({
+            packetType: 'captureScreen',
+            timeStamp: Date.now(),
+            payload: { mode, title }
+        });
+        this._send(json);
+    }
+
+    // ── GPX APIs ──
+
+    private lastGpxLocationSendTime: number = 0;
+
+    startGpx(): void;
+    startGpx(manualLocation: boolean): void;
+    startGpx(lat: number, lon: number): void;
+    startGpx(lat: number, lon: number, manualLocation: boolean): void;
+    startGpx(arg1?: boolean | number, arg2?: number, arg3?: boolean): void {
+        let lat: number | undefined;
+        let lon: number | undefined;
+        let manualLocation: boolean | undefined;
+
+        if (typeof arg1 === 'boolean') {
+            manualLocation = arg1;
+        } else if (typeof arg1 === 'number' && typeof arg2 === 'number') {
+            lat = arg1;
+            lon = arg2;
+            manualLocation = arg3;
+        }
+
+        const json = JSON.stringify({
+            packetType: 'gpxStart',
+            timeStamp: Date.now(),
+            payload: { lat, lon, manualLocation }
+        });
+        this._send(json);
+    }
+
+    updateGpxLocation(lat: number, lon: number): void {
+        const now = Date.now();
+        if (this.lastGpxLocationSendTime > 0 && (now - this.lastGpxLocationSendTime) < 500) {
+            return;
+        }
+        this.lastGpxLocationSendTime = now;
+
+        const json = JSON.stringify({
+            packetType: 'gpxUpdateLocation',
+            timeStamp: now,
+            payload: { lat, lon }
+        });
+        this._send(json);
+    }
+
+    exportGpx(): void {
+        const json = JSON.stringify({
+            packetType: 'gpxExport',
+            timeStamp: Date.now(),
+            payload: {}
+        });
+        this._send(json);
     }
 }

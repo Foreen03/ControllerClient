@@ -28,4 +28,26 @@ export interface CommandPacket extends TypedPacket {
 }
 
 /** Union of all known packet types. */
-export type Packet = MovementPacket | CommandPacket;
+export type Packet = MovementPacket | CommandPacket | ScreenshotPacket | GpxStartedPacket | GpxExportedPacket;
+
+export interface ScreenshotPacket extends TypedPacket {
+    type: 'screenshot';
+    path: string;
+    width: number;
+    height: number;
+}
+
+export interface GpxStartedPacket extends TypedPacket {
+    type: 'gpxStarted';
+    mode: string;
+    error?: string;
+}
+
+export interface GpxExportedPacket extends TypedPacket {
+    type: 'gpxExported';
+    path: string;
+    distance: number;
+    duration: string;
+    error?: string;
+}
+
