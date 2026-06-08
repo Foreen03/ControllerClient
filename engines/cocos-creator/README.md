@@ -119,7 +119,7 @@ if (bridge.isActionPressed("fire"))   { /* handle fire   */ }
 if (bridge.isActionPressed("crouch")) { /* handle crouch */ }
 ```
 
-Button names correspond to the `buttons` object in the WebSocket movement packet.
+Button names correspond to the `command` field in button configuration.
 
 ---
 
