@@ -97,6 +97,23 @@ namespace ControllerClient
             _ = SendAsync(json);
         }
 
+        // ---------- Vibration API ----------
+
+        /// <summary>
+        /// Request a vibration on the controller.
+        /// </summary>
+        /// <param name="durationMs">The duration of the vibration in milliseconds (default is 200).</param>
+        public void Vibrate(int durationMs = 200)
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                packetType = "vibrate",
+                timeStamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                payload = new { duration = durationMs }
+            });
+            _ = SendAsync(json);
+        }
+
         // ---------- GPX Recording API ----------
 
         /// <summary>

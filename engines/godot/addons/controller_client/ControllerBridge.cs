@@ -188,6 +188,13 @@ public partial class ControllerBridge : Node
         Controller?.CaptureScreen(windowTitle);
     }
 
+    /// <summary>Request a vibration on the controller.</summary>
+    /// <param name="durationMs">The duration of the vibration in milliseconds (default is 200).</param>
+    public void Vibrate(int durationMs = 200)
+    {
+        Controller?.Vibrate(durationMs);
+    }
+
     /// <summary>Start GPX recording with simulated route at server default origin.</summary>
     public void StartGpx()
     {

@@ -148,6 +148,11 @@ export class ControllerBridge extends Component {
         this.controller?.captureScreen(arg as any);
     }
 
+    /** Request a vibration on the controller. */
+    vibrate(durationMs: number = 200): void {
+        this.controller?.vibrate(durationMs);
+    }
+
     /** Start GPX recording with simulated route at server default origin. */
     startGpx(): void;
     /** Start GPX recording at server default origin. If manualLocation is true, character positions must be updated via UpdateGpxLocation. */

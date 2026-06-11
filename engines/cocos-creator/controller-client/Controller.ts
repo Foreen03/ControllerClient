@@ -279,6 +279,15 @@ export class Controller {
         this._send(json);
     }
 
+    vibrate(durationMs: number = 200): void {
+        const json = JSON.stringify({
+            packetType: 'vibrate',
+            timeStamp: Date.now(),
+            payload: { duration: durationMs }
+        });
+        this._send(json);
+    }
+
     // ── GPX APIs ──
 
     private lastGpxLocationSendTime: number = 0;

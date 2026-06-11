@@ -186,6 +186,20 @@ bridge.captureScreen("My Cocos Game");
 
 ---
 
+## Vibration API
+
+The SDK can request a vibration on the controller.
+
+```ts
+// Vibrate for default duration (200 milliseconds)
+bridge.vibrate();
+
+// Vibrate for a custom duration (e.g. 500 milliseconds)
+bridge.vibrate(500);
+```
+
+---
+
 ## GPX Recording
 
 GPX recording has two modes:

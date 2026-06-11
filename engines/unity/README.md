@@ -345,6 +345,20 @@ void OnScreenshot(ScreenshotResult result)
 
 ---
 
+## Vibration API
+
+The SDK can request a vibration on the controller.
+
+```csharp
+// Vibrate for default duration (200 milliseconds)
+bridge.Vibrate();
+
+// Vibrate for a custom duration (e.g. 500 milliseconds)
+bridge.Vibrate(500);
+```
+
+---
+
 ## GPX Recording
 
 The SDK supports GPX trail recording, which is useful for fitness games, route simulation, and tracking walking trails. Recorded trails are saved as standard `.gpx` files on the PC server and can be imported directly into apps like Strava.

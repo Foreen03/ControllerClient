@@ -191,6 +191,20 @@ bridge.CaptureScreen("My Godot Game");
 
 ---
 
+## Vibration API
+
+The SDK can request a vibration on the controller.
+
+```csharp
+// Vibrate for default duration (200 milliseconds)
+bridge.Vibrate();
+
+// Vibrate for a custom duration (e.g. 500 milliseconds)
+bridge.Vibrate(500);
+```
+
+---
+
 ## GPX Recording
 
 GPX recording has two modes:
