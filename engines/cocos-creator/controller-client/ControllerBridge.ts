@@ -67,8 +67,12 @@ export class ControllerBridge extends Component {
     /** Whether the controller WebSocket is currently connected. */
     public connected: boolean = false;
 
+    /** Fired when the motion intent is updated. */
+    public onMotionUpdated: ((intent: MotionIntent) => void) | null = null;
     /** Fired when a command is received. */
     public onCommandReceived: ((command: string) => void) | null = null;
+    /** Fired when the WebSocket connection state changes. */
+    public onConnectionStateChanged: ((connected: boolean) => void) | null = null;
     /** Fired when a screenshot is saved. */
     public onScreenshotReceived: ((result: ScreenshotResult) => void) | null = null;
     /** Fired when a GPX trail is exported. */
@@ -84,11 +88,13 @@ export class ControllerBridge extends Component {
 
         this.controller.onMotion = (intent: MotionIntent) => {
             this.lastMotion = intent;
+            this.onMotionUpdated?.(intent);
         };
 
         this.controller.onConnectionStateChanged = (isConnected: boolean) => {
             this.connected = isConnected;
             console.log(`[ControllerBridge] Connection: ${isConnected ? 'OPEN' : 'CLOSED'}`);
+            this.onConnectionStateChanged?.(isConnected);
         };
 
         this.controller.onCommand = (command: string) => {
