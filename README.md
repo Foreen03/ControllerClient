@@ -1,4 +1,4 @@
-# ControllerClient SDK
+# BlueStep Connect - ControllerClient SDK
 
 A unified, multi-engine plugin and SDK that connects a game client to a mobile-sensor WebSocket relay. It captures real-time accelerometer and step-counter data from a mobile device and converts them into gameplay-ready movement and steering inputs (**MotionIntent**).
 
