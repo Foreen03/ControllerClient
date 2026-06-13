@@ -10,7 +10,11 @@ graph TD
     D -->|Poll / Subscribe| E[Your Game Scripts]
 ```
 
----
+## Key parts
+
+- [`Controller`](#controller): The core SDK class that manages the WebSocket connection lifecycle, parses messages, and dispatches callbacks.
+- [`ControllerBridge`](#controllerbridge): An engine-specific wrapper component (Unity, Godot, Cocos Creator) that automatically manages connection state and synchronizes settings.
+- [`MotionSettings`](#motionsettings): A configuration class holding parameters for tilt steering deadzones, step impulses, and damping decay.
 
 ## Supported Engines
 
@@ -18,8 +22,6 @@ The SDK provides customized integration bridges for:
 *   **Unity**: C# MonoBehaviour wrapper for standard GameObject setups.
 *   **Godot 4 (.NET)**: C# `Node` wrapper using Godot signals.
 *   **Cocos Creator 3.x**: TypeScript component with custom callbacks.
-
----
 
 ## Installation Guides
 
@@ -47,8 +49,6 @@ The SDK provides customized integration bridges for:
 2. Cocos Creator will compile the TypeScript scripts automatically.
 3. Add the `ControllerBridge` component to an active Node in your hierarchy.
 
----
-
 ## Usage Patterns: Bridge Component vs. Direct Class
 
 You can integrate the SDK into your project using one of two patterns:
@@ -58,7 +58,7 @@ This approach leverages engine-specific components/nodes. The bridge manages con
 
 ### Option B: Using the `Controller` Class Directly (Advanced)
 For custom application architectures, you can bypass the engine bridge entirely. Instantiate the core `Controller` class, configure settings manually, subscribe directly to C#/TS callbacks, and call `Dispatch()` every frame in your update loop.
-> [!TIP]
+> Note: 
 > Details, class API documentation, and code examples for using the core classes directly can be found in the **[Core SDK Classes Reference](#core-sdk-classes-reference-direct-class-usage)** section at the end of this document.
 
 ### Engine Integration Quick-Start Examples (Bridge Component)
@@ -170,8 +170,6 @@ export class Player extends Component {
 }
 ```
 
----
-
 ## Callbacks & Events Reference
 
 The SDK and bridge components expose several callbacks/events to react to real-time events.
@@ -190,98 +188,107 @@ The SDK and bridge components expose several callbacks/events to react to real-t
     *   **Godot (Signal)**: `(float move, float turn, long timestamp, int rawSteps, float stepsCadence)`
     *   **Cocos Creator (TS Callback)**: `MotionIntent` interface (using camelCase: `move`, `turn`, `timestamp`, `rawSteps`, `stepsCadence`).
 *   **Code Examples**:
-    :::code-tabs
-    @tab Unity C#
-    ```csharp
-    void Awake() {
-        bridge.OnMotionUpdated += (intent) => {
-            Debug.Log($"Motion: Move={intent.Move}, Turn={intent.Turn}");
-        };
-    }
-    ```
-    @tab Godot C#
-    ```csharp
-    public override void _Ready() {
-        bridge.MotionUpdated += (move, turn, timestamp, rawSteps, cadence) => {
-            GD.Print($"Motion: Move={move}, Turn={turn}");
-        };
-    }
-    ```
-    @tab Cocos Creator TS
-    ```ts
-    onLoad() {
-        bridge.controller.onMotion = (intent) => {
-            console.log(`Motion: move=${intent.move}, turn=${intent.turn}`);
-        };
-    }
-    ```
-    :::
+##### Unity C#
+
+```csharp
+void Awake() {
+    bridge.OnMotionUpdated += (intent) => {
+        Debug.Log($"Motion: Move={intent.Move}, Turn={intent.Turn}");
+    };
+}
+```
+
+##### Godot C#
+
+```csharp
+public override void _Ready() {
+    bridge.MotionUpdated += (move, turn, timestamp, rawSteps, cadence) => {
+        GD.Print($"Motion: Move={move}, Turn={turn}");
+    };
+}
+```
+
+##### Cocos Creator TS
+
+```ts
+onLoad() {
+    bridge.onMotionUpdated = (intent) => {
+        console.log(`Motion: move=${intent.move}, turn=${intent.turn}`);
+    };
+}
+```
 
 #### 2. Command Received
 *   **Trigger Condition**: Fired when a discrete system command or button event is received from the server (excluding system connection messages, which are routed to Connection State Changed). This is commonly used for UI actions, pausing, menu navigation, or custom trigger buttons in the controller layout (e.g. `"pause"`, `"resume"`, `"screenshot"`).
 *   **Parameters**:
     *   `command` (`string`): The command string value matching the system command on the server.
 *   **Code Examples**:
-    :::code-tabs
-    @tab Unity C#
-    ```csharp
-    void Start() {
-        bridge.OnCommandReceived += (cmd) => {
-            if (cmd == "pause") ShowPauseMenu();
-            else if (cmd == "resume") HidePauseMenu();
-        };
-    }
-    ```
-    @tab Godot C#
-    ```csharp
-    public override void _Ready() {
-        bridge.CommandReceived += (cmd) => {
-            if (cmd == "pause") GetTree().Paused = true;
-        };
-    }
-    ```
-    @tab Cocos Creator TS
-    ```ts
-    onLoad() {
-        bridge.onCommandReceived = (cmd) => {
-            if (cmd === 'pause') this.pauseGame();
-        };
-    }
-    ```
-    :::
+##### Unity C#
+
+```csharp
+void Start() {
+    bridge.OnCommandReceived += (cmd) => {
+        if (cmd == "pause") ShowPauseMenu();
+        else if (cmd == "resume") HidePauseMenu();
+    };
+}
+```
+
+##### Godot C#
+
+```csharp
+public override void _Ready() {
+    bridge.CommandReceived += (cmd) => {
+        if (cmd == "pause") GetTree().Paused = true;
+    };
+}
+```
+
+##### Cocos Creator TS
+
+```ts
+onLoad() {
+    bridge.onCommandReceived = (cmd) => {
+        if (cmd === 'pause') this.pauseGame();
+    };
+}
+```
 
 #### 3. Connection State Changed
 *   **Trigger Condition**: Fired when the WebSocket connection state transitions. It will trigger with `true` when a connection is successfully established, and `false` when the socket is closed, lost, or when the server dispatches a `controller_disconnected` command.
 *   **Parameters**:
     *   `connected` (`bool` / `boolean`): True if connected, false otherwise.
 *   **Code Examples**:
-    :::code-tabs
-    @tab Unity C#
-    ```csharp
-    void Start() {
-        bridge.OnConnectionStateChanged += (connected) => {
-            connectionIndicator.SetActive(connected);
-            Debug.Log(connected ? "Controller Connected" : "Connection Lost");
-        };
-    }
-    ```
-    @tab Godot C#
-    ```csharp
-    public override void _Ready() {
-        bridge.ConnectionStateChanged += (connected) => {
-            GD.Print(connected ? "Online" : "Offline");
-        };
-    }
-    ```
-    @tab Cocos Creator TS
-    ```ts
-    onLoad() {
-        bridge.controller.onConnectionStateChanged = (connected) => {
-            this.statusLabel.string = connected ? "Connected" : "Disconnected";
-        };
-    }
-    ```
-    :::
+##### Unity C#
+
+```csharp
+void Start() {
+    bridge.OnConnectionStateChanged += (connected) => {
+        connectionIndicator.SetActive(connected);
+        Debug.Log(connected ? "Controller Connected" : "Connection Lost");
+    };
+}
+```
+
+##### Godot C#
+
+```csharp
+public override void _Ready() {
+    bridge.ConnectionStateChanged += (connected) => {
+        GD.Print(connected ? "Online" : "Offline");
+    };
+}
+```
+
+##### Cocos Creator TS
+
+```ts
+onLoad() {
+    bridge.onConnectionStateChanged = (connected) => {
+        this.statusLabel.string = connected ? "Connected" : "Disconnected";
+    };
+}
+```
 
 #### 4. Screenshot Received
 *   **Trigger Condition**: Fired asynchronously after requesting a screenshot capture. The PC relay server takes the screenshot, writes it to its local directory, and returns the metadata.
@@ -293,35 +300,38 @@ The SDK and bridge components expose several callbacks/events to react to real-t
     *   **Godot (Signal)**: `(string filePath, int width, int height)`
     *   **Cocos Creator (TS Callback)**: `ScreenshotResult` containing `filePath`, `width`, `height`.
 *   **Code Examples**:
-    :::code-tabs
-    @tab Unity C#
-    ```csharp
-    void Start() {
-        bridge.OnScreenshotReceived += (result) => {
-            byte[] bytes = System.IO.File.ReadAllBytes(result.FilePath);
-            Texture2D tex = new Texture2D(result.Width, result.Height);
-            tex.LoadImage(bytes);
-            previewImage.texture = tex;
-        };
-    }
-    ```
-    @tab Godot C#
-    ```csharp
-    public override void _Ready() {
-        bridge.ScreenshotReceived += (filePath, width, height) => {
-            GD.Print($"Godot saved screenshot size: {width}x{height} at {filePath}");
-        };
-    }
-    ```
-    @tab Cocos Creator TS
-    ```ts
-    onLoad() {
-        bridge.onScreenshotReceived = (result) => {
-            console.log(`Saved image dimension: ${result.width}x${result.height}`);
-        };
-    }
-    ```
-    :::
+##### Unity C#
+
+```csharp
+void Start() {
+    bridge.OnScreenshotReceived += (result) => {
+        byte[] bytes = System.IO.File.ReadAllBytes(result.FilePath);
+        Texture2D tex = new Texture2D(result.Width, result.Height);
+        tex.LoadImage(bytes);
+        previewImage.texture = tex;
+    };
+}
+```
+
+##### Godot C#
+
+```csharp
+public override void _Ready() {
+    bridge.ScreenshotReceived += (filePath, width, height) => {
+        GD.Print($"Godot saved screenshot size: {width}x{height} at {filePath}");
+    };
+}
+```
+
+##### Cocos Creator TS
+
+```ts
+onLoad() {
+    bridge.onScreenshotReceived = (result) => {
+        console.log(`Saved image dimension: ${result.width}x${result.height}`);
+    };
+}
+```
 
 #### 5. GPX Exported
 *   **Trigger Condition**: Fired asynchronously when the current GPX trail recording is finalized and written to the server disk as a `.gpx` file.
@@ -334,44 +344,44 @@ The SDK and bridge components expose several callbacks/events to react to real-t
     *   **Godot (Signal)**: `(string filePath, double distanceKm, string duration, string error)`
     *   **Cocos Creator (TS Callback)**: `GpxExportResult` containing `filePath`, `distanceKm`, `duration`, `error`.
 *   **Code Examples**:
-    :::code-tabs
-    @tab Unity C#
-    ```csharp
-    void Start() {
-        bridge.OnGpxExported += (result) => {
-            if (!string.IsNullOrEmpty(result.Error)) {
-                Debug.LogError($"Export failed: {result.Error}");
-                return;
-            }
-            Debug.Log($"Track Saved: {result.FilePath} ({result.DistanceKm} km)");
-        };
-    }
-    ```
-    @tab Godot C#
-    ```csharp
-    public override void _Ready() {
-        bridge.GpxExported += (filePath, distance, duration, error) => {
-            if (!string.IsNullOrEmpty(error)) return;
-            GD.Print($"GPX saved: {filePath} ({distance} km)");
-        };
-    }
-    ```
-    @tab Cocos Creator TS
-    ```ts
-    onLoad() {
-        bridge.onGpxExported = (result) => {
-            if (result.error) {
-                console.error(result.error);
-                return;
-            }
-            console.log(`Cocos GPX saved: ${result.filePath}`);
-        };
-    }
-    ```
-    :::
+##### Unity C#
 
----
+```csharp
+void Start() {
+    bridge.OnGpxExported += (result) => {
+        if (!string.IsNullOrEmpty(result.Error)) {
+            Debug.LogError($"Export failed: {result.Error}");
+            return;
+        }
+        Debug.Log($"Track Saved: {result.FilePath} ({result.DistanceKm} km)");
+    };
+}
+```
 
+##### Godot C#
+
+```csharp
+public override void _Ready() {
+    bridge.GpxExported += (filePath, distance, duration, error) => {
+        if (!string.IsNullOrEmpty(error)) return;
+        GD.Print($"GPX saved: {filePath} ({distance} km)");
+    };
+}
+```
+
+##### Cocos Creator TS
+
+```ts
+onLoad() {
+    bridge.onGpxExported = (result) => {
+        if (result.error) {
+            console.error(result.error);
+            return;
+        }
+        console.log(`Cocos GPX saved: ${result.filePath}`);
+    };
+}
+```
 
 ### Engine-Specific Event Binding Examples
 
@@ -453,8 +463,8 @@ export class CocosEventListener extends Component {
         bridge.onScreenshotReceived = (result) => this.onScreenshot(result);
         bridge.onGpxExported = (result) => this.onGpxExported(result);
         
-        // Note: For direct motion listening, you can also bind directly to the core controller:
-        bridge.controller.onConnectionStateChanged = (connected) => this.onConnectionChanged(connected);
+        // Assign connection callback
+        bridge.onConnectionStateChanged = (connected) => this.onConnectionChanged(connected);
     }
 
     onCommand(command: string) { /* ... */ }
@@ -463,10 +473,6 @@ export class CocosEventListener extends Component {
     onConnectionChanged(connected: boolean) { /* ... */ }
 }
 ```
-
----
-
-
 
 ## Motion Math & Processing
 
@@ -490,8 +496,6 @@ Forward velocity is driven by physical steps:
 2. **Speed Ceil**: Velocity is capped to a maximum value `MaxMove`.
 3. **Damping Decay**: During frames without steps, the forward velocity decays exponentially based on `MoveDamping` and the frame delta time $dt$:
    $$V_{\text{decayed}} = V_{\text{new}} \times e^{-\text{MoveDamping} \times dt}$$
-
----
 
 ## Configuration Parameters
 
@@ -539,8 +543,6 @@ The following parameters are exposed in the inspectors of `ControllerBridge` in 
     *   **Range**: `0.1` to `10.0`
     *   **Description**: Rate of exponential decay applied to the forward velocity speed buffer each frame. Higher values cause the player to stop quickly when they halt, while lower values cause the player to glide or drift forward.
 
----
-
 ### Parameters Configuration Examples
 
 #### 1. Inspector Configuration
@@ -564,17 +566,17 @@ public class GameplayModulator : MonoBehaviour
     // Call to activate speed-run state
     public void EnableSuperSpeedMode()
     {
-        bridge.maxMove = 4.0f;        // Raise the speed cap
-        bridge.stepImpulse = 0.9f;    // More speed per step
-        bridge.moveDamping = 1.0f;    // Half the deceleration rate
+        bridge.MaxMove = 4.0f;        // Raise the speed cap
+        bridge.StepImpulse = 0.9f;    // More speed per step
+        bridge.MoveDamping = 1.0f;    // Half the deceleration rate
     }
 
     // Call to reset parameters back to normal
     public void ResetTuningParameters()
     {
-        bridge.maxMove = 1.5f;
-        bridge.stepImpulse = 0.4f;
-        bridge.moveDamping = 2.0f;
+        bridge.MaxMove = 1.5f;
+        bridge.StepImpulse = 0.4f;
+        bridge.MoveDamping = 2.0f;
     }
 }
 ```
@@ -602,14 +604,9 @@ export class EnvironmentModulator extends Component {
 }
 ```
 
----
-
-
 ## API Reference
 
 The following APIs are exposed on the `ControllerBridge` component for standard gameplay integration. If you are using the core classes directly instead, refer to the **[Core SDK Classes Reference](#core-sdk-classes-reference-direct-class-usage)** at the end of this document.
-
----
 
 ### 2. Action States (Button Polling)
 The SDK maintains a boolean dictionary of button/action states. A button is set to `true` when pressed, and automatically released if no updates are received after a short timeout ($150\text{ ms}$). The `actionName` is mapped to the command column under edit button in the layout configuration in the server. 
@@ -619,30 +616,29 @@ The SDK maintains a boolean dictionary of button/action states. A button is set 
 *   **TypeScript**: `isActionPressed(actionName: string): boolean`
 
 #### Example Usage
-:::code-tabs
-@tab C# (Unity & Godot)
+##### C# (Unity & Godot)
+
 ```csharp
 void Update() {
-    if (bridge.IsActionPressed("jump")) {
-        TriggerJump();
-    }
-    if (bridge.IsActionPressed("fire")) {
-        TriggerShoot();
-    }
+if (bridge.IsActionPressed("jump")) {
+    TriggerJump();
+}
+if (bridge.IsActionPressed("fire")) {
+    TriggerShoot();
+}
 }
 ```
-@tab TypeScript (Cocos Creator)
+
+##### TypeScript (Cocos Creator)
+
 ```ts
 update(dt: number) {
-    const bridge = this.node.getComponent(ControllerBridge)!;
-    if (bridge.isActionPressed("jump")) {
-        this.triggerJump();
-    }
+const bridge = this.node.getComponent(ControllerBridge)!;
+if (bridge.isActionPressed("jump")) {
+    this.triggerJump();
+}
 }
 ```
-:::
-
----
 
 ### 3. Screenshot Capture API
 Requests the PC relay server to take a screenshot. Screenshots are processed asynchronously on the server and written to its local disk.
@@ -655,22 +651,22 @@ Requests the PC relay server to take a screenshot. Screenshots are processed asy
 #### Data Models
 
 ##### ScreenshotResult (C#)
-| Property | Type | Description |
-| :--- | :--- | :--- |
+| Prop | Type | Description |
+|------|------|------|
 | `FilePath` | `string` | Absolute path to the saved JPEG image file on the server. |
 | `Width` | `int` | Width of the captured screenshot in pixels. |
 | `Height` | `int` | Height of the captured screenshot in pixels. |
 
 ##### ScreenshotResult (TypeScript)
-| Field | Type | Description |
-| :--- | :--- | :--- |
+| Prop | Type | Description |
+|------|------|------|
 | `filePath` | `string` | Absolute path to the saved JPEG image file on the server. |
 | `width` | `number` | Width of the captured screenshot in pixels. |
 | `height` | `number` | Height of the captured screenshot in pixels. |
 
 #### Code Examples
-:::code-tabs
-@tab Unity
+##### Unity
+
 ```csharp
 void Start() {
     ControllerBridge.Instance.OnScreenshotReceived += OnScreenshot;
@@ -684,7 +680,9 @@ void OnScreenshot(ScreenshotResult result) {
     Debug.Log($"Saved: {result.FilePath} ({result.Width}x{result.Height})");
 }
 ```
-@tab Godot 4 (.NET)
+
+##### Godot 4 (.NET)
+
 ```csharp
 public override void _Ready() {
     var bridge = GetNode<ControllerBridge>("ControllerBridge");
@@ -696,7 +694,9 @@ private void OnScreenshot(string filePath, int width, int height) {
     GD.Print($"Saved: {filePath} ({width}x{height})");
 }
 ```
-@tab Cocos Creator
+
+##### Cocos Creator
+
 ```ts
 onLoad() {
     const bridge = this.node.getComponent(ControllerBridge)!;
@@ -706,9 +706,6 @@ onLoad() {
     bridge.captureScreen();
 }
 ```
-:::
-
----
 
 ### 4. Vibration API
 Triggers haptic feedback vibration on the connected mobile device.
@@ -717,8 +714,8 @@ Triggers haptic feedback vibration on the connected mobile device.
 *   `Vibrate(int durationMs = 200)` / `vibrate(durationMs: number = 200)`: Requests a vibration pattern.
 
 #### Code Examples
-:::code-tabs
-@tab C# (Unity & Godot)
+##### C# (Unity & Godot)
+
 ```csharp
 // Vibrate with default duration (200ms)
 bridge.Vibrate();
@@ -726,14 +723,13 @@ bridge.Vibrate();
 // Vibrate for a longer duration (500ms)
 bridge.Vibrate(500);
 ```
-@tab TypeScript (Cocos Creator)
+
+##### TypeScript (Cocos Creator)
+
 ```ts
 // Trigger standard haptic vibration
 bridge.vibrate(150);
 ```
-:::
-
----
 
 ### 5. GPX Recording & Exporting API
 The GPX API captures spatial paths during play sessions and exports them as `.gpx` files (compatible with Strava, Garmin, etc.).
@@ -742,7 +738,7 @@ The GPX API captures spatial paths during play sessions and exports them as `.gp
 1.  **Simulated Mode (Default)**: The server automatically creates a route starting at the specified coordinates, advancing the location vector forward based on step count cadence.
 2.  **Manual Mode**: The game script dynamically pushes the player's 3D position to the server, which converts the coordinate delta offsets into geographic latitude/longitude.
 
-> [!WARNING]
+> Note: 
 > When using **Manual Mode**, you **must** supply origin latitude and longitude coordinates during `StartGpx`. Otherwise, the server defaults to user defined starting point in the server. It will be different for every different user. If your game world coordinates do not match, the exported GPX trail will have a teleportation spike from the default origin to the actual game coordinate offsets.
 
 #### API Methods
@@ -756,16 +752,16 @@ The GPX API captures spatial paths during play sessions and exports them as `.gp
 #### Data Models
 
 ##### GpxExportResult (C#)
-| Property | Type | Description |
-| :--- | :--- | :--- |
+| Prop | Type | Description |
+|------|------|------|
 | `FilePath` | `string` | Path on the server disk where the `.gpx` trail was exported. |
 | `DistanceKm` | `double` | Cumulative path distance calculated in kilometers. |
 | `Duration` | `string` | Total recording duration formatted as `hh:mm:ss`. |
 | `Error` | `string` | Non-empty error message string if export failed on the server. |
 
 ##### GpxExportResult (TypeScript)
-| Field | Type | Description |
-| :--- | :--- | :--- |
+| Prop | Type | Description |
+|------|------|------|
 | `filePath` | `string` | Path on the server disk where the `.gpx` trail was exported. |
 | `distanceKm` | `number` | Cumulative path distance calculated in kilometers. |
 | `duration` | `string` | Total recording duration formatted as `hh:mm:ss`. |
@@ -940,8 +936,6 @@ export class CocosGpxTracker extends Component {
 }
 ```
 
----
-
 ## WebSocket Protocol Details
 
 The core client SDK establishes a standard WebSocket communication channel. You can inspect or build your own client/server implementation using the following JSON packet specifications:
@@ -956,7 +950,7 @@ Triggered by screenshot APIs.
   "timeStamp": 1700000000000,
   "payload": {
     "mode": "window", 
-    "title": "My Unity Game" // Optional. If omitted, captures foreground active window
+    "title": "My Mini Game" // Optional. If omitted, captures foreground active window
   }
 }
 ```
@@ -1009,8 +1003,6 @@ Triggered when requesting a GPX trail export.
   "payload": {}
 }
 ```
-
----
 
 ### 2. Client-bound Packets (Server $\to$ Game)
 
@@ -1081,19 +1073,15 @@ Fired with result statistics when a GPX recording is exported.
 }
 ```
 
----
-
 ## Troubleshooting Guide
 
 | Issue | Cause | Solution |
-| :--- | :--- | :--- |
+|------|------|------|
 | **No motion data received** | The WebSocket client is disconnected. | Verify that the relay server is running and checking that your network firewall allows connections on the targeted port. Check the console logs for connection exceptions. |
 | **Steering drifts when device is held flat** | Accelerometer readings are inside the steering threshold. | Increase the `DeadZone` parameter to filter out noise when the mobile device is resting or in a neutral posture. |
 | **Steering is sluggish or over-sensitive** | `SteeringSmoothing` or `MaxTilt` are misconfigured. | Lower the `SteeringSmoothing` factor for faster snap-turns, or increase `MaxTilt` to require more extreme physical rotation angles before achieving maximum turning speed. |
 | **GPX trail starts with a massive teleportation vector** | `StartGpx` coordinates did not match the game's actual local start location. | Make sure to call `StartGpx` in manual mode passing the correct geographical latitude/longitude of your starting arena origin. |
 | **Screenshot result is completely blank** | Capture targeted the wrong graphics buffer or window context. | Specify the window title directly via `CaptureScreen("My Game Window Name")` to ensure the correct native handle is targeted by the server capture worker. |
-
----
 
 ## Core SDK Classes Reference (Direct Class Usage)
 
@@ -1146,38 +1134,40 @@ The primary class that manages the WebSocket connection lifecycle, message parsi
     *   `onGpxExported: ((result: GpxExportResult) => void) | null`
 
 #### Core Lifecycle Code Examples
-:::code-tabs
-@tab C#
+##### C#
+
 ```csharp
 using ControllerClient;
 
 public class CoreControllerExample
 {
-    private Controller controller;
+private Controller controller;
 
-    public void Initialize()
-    {
-        var settings = new MotionSettings { StepImpulse = 0.5f, MaxMove = 2.0f };
-        controller = new Controller(settings);
-        controller.OnMotion += (intent) => LogMotion(intent);
-        controller.Connect("ws://localhost:8765/sensor");
-    }
+public void Initialize()
+{
+    var settings = new MotionSettings { StepImpulse = 0.5f, MaxMove = 2.0f };
+    controller = new Controller(settings);
+    controller.OnMotion += (intent) => LogMotion(intent);
+    controller.Connect("ws://localhost:8765/sensor");
+}
 
-    public void Update()
-    {
-        // Vital: Dispatch queued events to the main thread
-        controller.Dispatch();
-    }
+public void Update()
+{
+    // Vital: Dispatch queued events to the main thread
+    controller.Dispatch();
+}
 
-    public void Shutdown()
-    {
-        controller.Dispose();
-    }
+public void Shutdown()
+{
+    controller.Dispose();
+}
 
-    private void LogMotion(MotionIntent intent) { /* ... */ }
+private void LogMotion(MotionIntent intent) { /* ... */ }
 }
 ```
-@tab TypeScript
+
+##### TypeScript
+
 ```ts
 import { Controller, MotionSettings } from './controller-client';
 
@@ -1186,21 +1176,18 @@ settings.stepImpulse = 0.5;
 
 const controller = new Controller(settings);
 controller.onMotion = (intent) => {
-    console.log(`Move: ${intent.move}, Turn: ${intent.turn}`);
+console.log(`Move: ${intent.move}, Turn: ${intent.turn}`);
 };
 controller.connect("ws://localhost:8765/sensor");
 
 // Call every frame in render/update loop:
 function updateLoop() {
-    controller.dispatch();
+controller.dispatch();
 }
 
 // Call on shutdown:
 controller.dispose();
 ```
-:::
-
----
 
 ### 2. `MotionSettings` Class
 Contains parameters that configure raw motion sensor filtering.
@@ -1217,8 +1204,6 @@ Contains parameters that configure raw motion sensor filtering.
 #### TypeScript Fields
 Equivalent camelCase properties: `maxTilt`, `deadZone`, `steeringSmoothing`, `turnSpeedDeg`, `stepImpulse`, `maxMove`, `moveDamping`.
 
----
-
 ### 3. `ActionState` Class
 Exposes polling methods to check whether custom actions/buttons are currently pressed.
 
@@ -1230,12 +1215,8 @@ Exposes polling methods to check whether custom actions/buttons are currently pr
 #### Methods (TypeScript)
 *   `get(action: string): boolean`: Checks action status.
 
----
-
 ### 4. `MotionProcessor` Class (Internal)
 Performs frame-by-frame steering gravity computations, linear interpolation smoothing, step delta calculations, speed clamping, and exponential damping decay. Refer to the **[Motion Math & Processing](#motion-math--processing)** section for details on these equations.
-
----
 
 ### Engine Direct Integration Code Examples (Direct Class Usage)
 
