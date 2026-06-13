@@ -222,6 +222,12 @@ onLoad() {
 *   **Trigger Condition**: Fired when a discrete system command or button event is received from the server (excluding system connection messages, which are routed to Connection State Changed). This is commonly used for UI actions, pausing, menu navigation, or custom trigger buttons in the controller layout (e.g. `"pause"`, `"resume"`, `"screenshot"`).
 *   **Parameters**:
     *   `command` (`string`): The command string value matching the system command on the server.
+*   **Commands Available**:
+    *   `"controller_connected"`: Fired when a connection is successfully established.
+    *   `"controller_disconnected"`: Fired when the connection is lost or closed.
+    *   `"screenshot"`: Fired when a screenshot is requested.
+    *   `"pause"`: Fired when the pause button is pressed.
+    *   `"resume"`: Fired when the resume button is pressed.
 *   **Code Examples**:
 ##### Unity C#
 
