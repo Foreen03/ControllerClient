@@ -1141,28 +1141,28 @@ using ControllerClient;
 
 public class CoreControllerExample
 {
-private Controller controller;
+    private Controller controller;
 
-public void Initialize()
-{
-    var settings = new MotionSettings { StepImpulse = 0.5f, MaxMove = 2.0f };
-    controller = new Controller(settings);
-    controller.OnMotion += (intent) => LogMotion(intent);
-    controller.Connect("ws://localhost:8765/sensor");
-}
+    public void Initialize()
+    {
+        var settings = new MotionSettings { StepImpulse = 0.5f, MaxMove = 2.0f };
+        controller = new Controller(settings);
+        controller.OnMotion += (intent) => LogMotion(intent);
+        controller.Connect("ws://localhost:8765/sensor");
+    }
 
-public void Update()
-{
-    // Vital: Dispatch queued events to the main thread
-    controller.Dispatch();
-}
+    public void Update()
+    {
+        // Vital: Dispatch queued events to the main thread
+        controller.Dispatch();
+    }
 
-public void Shutdown()
-{
-    controller.Dispose();
-}
+    public void Shutdown()
+    {
+        controller.Dispose();
+    }
 
-private void LogMotion(MotionIntent intent) { /* ... */ }
+    private void LogMotion(MotionIntent intent) { /* ... */ }
 }
 ```
 
@@ -1176,13 +1176,13 @@ settings.stepImpulse = 0.5;
 
 const controller = new Controller(settings);
 controller.onMotion = (intent) => {
-console.log(`Move: ${intent.move}, Turn: ${intent.turn}`);
+    console.log(`Move: ${intent.move}, Turn: ${intent.turn}`);
 };
 controller.connect("ws://localhost:8765/sensor");
 
 // Call every frame in render/update loop:
 function updateLoop() {
-controller.dispatch();
+    controller.dispatch();
 }
 
 // Call on shutdown:
