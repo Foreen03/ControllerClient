@@ -1,4 +1,4 @@
-import { MotionIntent, MOTION_INTENT_ZERO, ScreenshotResult, GpxExportResult } from './MotionIntent';
+import { MotionIntent, MOTION_INTENT_ZERO, ScreenshotResult, GpxExportResult, GpxStartedResult } from './MotionIntent';
 import { MotionSettings } from './MotionSettings';
 import { MotionProcessor } from './MotionProcessor';
 import { ActionState } from './ActionState';
@@ -46,6 +46,8 @@ export class Controller {
     onConnectionStateChanged: ((connected: boolean) => void) | null = null;
     /** Fired when a screenshot is received. */
     onScreenshot: ((result: ScreenshotResult) => void) | null = null;
+    /** Fired when a GPX session has successfully initialized or failed. */
+    onGpxStarted: ((result: GpxStartedResult) => void) | null = null;
     /** Fired when a GPX export is completed. */
     onGpxExported: ((result: GpxExportResult) => void) | null = null;
 
@@ -157,7 +159,13 @@ export class Controller {
                 }
                 case 'gpxStarted': {
                     const pkt = typed as unknown as GpxStartedPacket;
-                    console.log(`[Controller] GPX started: mode=${pkt?.mode}, error=${pkt?.error}`);
+                    if (pkt) {
+                        const result: GpxStartedResult = {
+                            mode: pkt.mode,
+                            error: pkt.error
+                        };
+                        this._enqueue(() => this.onGpxStarted?.(result));
+                    }
                     break;
                 }
                 case 'gpxExported': {

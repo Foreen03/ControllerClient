@@ -37,3 +37,9 @@ export interface GpxExportResult {
     error?: string;
 }
 
+export interface GpxStartedResult {
+    mode: string;
+    error?: string;
+}
+
+

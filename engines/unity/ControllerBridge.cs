@@ -46,6 +46,7 @@ public class ControllerBridge : MonoBehaviour
     public UnityEvent<string> onCommandReceived;
     public UnityEvent<bool> onConnectionStateChanged;
     public UnityEvent<ScreenshotResult> onScreenshotReceived;
+    public UnityEvent<GpxStartedResult> onGpxStarted;
     public UnityEvent<GpxExportResult> onGpxExported;
 
     // ── C# Events (Code-only Hookups) ──
@@ -53,6 +54,7 @@ public class ControllerBridge : MonoBehaviour
     public event Action<string> OnCommandReceived;
     public event Action<bool> OnConnectionStateChanged;
     public event Action<ScreenshotResult> OnScreenshotReceived;
+    public event Action<GpxStartedResult> OnGpxStarted;
     public event Action<GpxExportResult> OnGpxExported;
 
     public Controller Controller { get; private set; }
@@ -105,6 +107,12 @@ public class ControllerBridge : MonoBehaviour
         {
             OnScreenshotReceived?.Invoke(result);
             onScreenshotReceived?.Invoke(result);
+        };
+
+        Controller.OnGpxStarted += (result) =>
+        {
+            OnGpxStarted?.Invoke(result);
+            onGpxStarted?.Invoke(result);
         };
 
         Controller.OnGpxExported += (result) =>

@@ -3,9 +3,10 @@
  * These mirror the C# Packet / MovementPacket / CommandPacket classes.
  */
 
-/** Discriminator envelope — every packet has a `type` field. */
+/** Discriminator envelope — every packet has a type and timestamp. */
 export interface TypedPacket {
     type: string;
+    timestamp: number;
 }
 
 /** Movement sensor data packet. */
@@ -16,7 +17,6 @@ export interface MovementPacket extends TypedPacket {
     z: number;
     steps: number;
     stepsCadence: number;
-    timestamp: number;
     buttons?: Record<string, boolean>;
 }
 
@@ -24,7 +24,6 @@ export interface MovementPacket extends TypedPacket {
 export interface CommandPacket extends TypedPacket {
     type: 'command';
     value: string;
-    timestamp: number;
 }
 
 /** Union of all known packet types. */

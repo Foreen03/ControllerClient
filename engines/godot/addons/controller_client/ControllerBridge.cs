@@ -71,6 +71,10 @@ public partial class ControllerBridge : Node
     [Signal]
     public delegate void ScreenshotReceivedEventHandler(string filePath, int width, int height);
 
+    /// <summary>Emitted when a GPX session has successfully initialized or failed to initialize.</summary>
+    [Signal]
+    public delegate void GpxStartedEventHandler(string mode, string error);
+
     /// <summary>Emitted when a GPX export result is received.</summary>
     [Signal]
     public delegate void GpxExportedEventHandler(string filePath, double distanceKm, string duration, string error);
@@ -121,6 +125,11 @@ public partial class ControllerBridge : Node
         Controller.OnScreenshot += (result) =>
         {
             EmitSignal(SignalName.ScreenshotReceived, result.FilePath, result.Width, result.Height);
+        };
+
+        Controller.OnGpxStarted += (result) =>
+        {
+            EmitSignal(SignalName.GpxStarted, result.Mode, result.Error);
         };
 
         Controller.OnGpxExported += (result) =>

@@ -1,6 +1,6 @@
 import { _decorator, Component } from 'cc';
 import { Controller } from './Controller';
-import { MotionIntent, ScreenshotResult, GpxExportResult } from './MotionIntent';
+import { MotionIntent, ScreenshotResult, GpxExportResult, GpxStartedResult } from './MotionIntent';
 import { MotionSettings } from './MotionSettings';
 
 const { ccclass, property } = _decorator;
@@ -75,6 +75,8 @@ export class ControllerBridge extends Component {
     public onConnectionStateChanged: ((connected: boolean) => void) | null = null;
     /** Fired when a screenshot is saved. */
     public onScreenshotReceived: ((result: ScreenshotResult) => void) | null = null;
+    /** Fired when a GPX session has successfully initialized or failed. */
+    public onGpxStarted: ((result: GpxStartedResult) => void) | null = null;
     /** Fired when a GPX trail is exported. */
     public onGpxExported: ((result: GpxExportResult) => void) | null = null;
 
@@ -103,6 +105,10 @@ export class ControllerBridge extends Component {
 
         this.controller.onScreenshot = (result: ScreenshotResult) => {
             this.onScreenshotReceived?.(result);
+        };
+
+        this.controller.onGpxStarted = (result: GpxStartedResult) => {
+            this.onGpxStarted?.(result);
         };
 
         this.controller.onGpxExported = (result: GpxExportResult) => {

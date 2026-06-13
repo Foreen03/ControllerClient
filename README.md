@@ -339,7 +339,55 @@ onLoad() {
 }
 ```
 
-#### 5. GPX Exported
+#### 5. GPX Started
+*   **Trigger Condition**: Fired asynchronously after requesting a GPX trail recording to start. Confirms whether the GPX session successfully initialized on the server or failed with an error.
+*   **Parameters**:
+    *   **Unity (C# Event)**: `GpxStartedResult` object containing:
+        *   `Mode` (`string`): The GPX tracking mode (`"manual"` or `"simulated"`).
+        *   `Error` (`string`): Error message if initialization failed (empty/null on success).
+    *   **Godot (Signal)**: `(string mode, string error)`
+    *   **Cocos Creator (TS Callback)**: `GpxStartedResult` containing `mode`, `error`.
+*   **Code Examples**:
+##### Unity C#
+
+```csharp
+void Start() {
+    bridge.OnGpxStarted += (result) => {
+        if (!string.IsNullOrEmpty(result.Error)) {
+            Debug.LogError($"GPX Init failed: {result.Error}");
+            return;
+        }
+        Debug.Log($"GPX Session Started in mode: {result.Mode}");
+    };
+}
+```
+
+##### Godot C#
+
+```csharp
+public override void _Ready() {
+    bridge.GpxStarted += (mode, error) => {
+        if (!string.IsNullOrEmpty(error)) return;
+        GD.Print($"GPX started in {mode} mode");
+    };
+}
+```
+
+##### Cocos Creator TS
+
+```ts
+onLoad() {
+    bridge.onGpxStarted = (result) => {
+        if (result.error) {
+            console.error(result.error);
+            return;
+        }
+        console.log(`Cocos GPX session started: ${result.mode}`);
+    };
+}
+```
+
+#### 6. GPX Exported
 *   **Trigger Condition**: Fired asynchronously when the current GPX trail recording is finalized and written to the server disk as a `.gpx` file.
 *   **Parameters**:
     *   **Unity (C# Event)**: `GpxExportResult` object containing:
@@ -467,6 +515,7 @@ export class CocosEventListener extends Component {
         // Assign callbacks
         bridge.onCommandReceived = (command) => this.onCommand(command);
         bridge.onScreenshotReceived = (result) => this.onScreenshot(result);
+        bridge.onGpxStarted = (result) => this.onGpxStarted(result);
         bridge.onGpxExported = (result) => this.onGpxExported(result);
         
         // Assign connection callback
@@ -475,6 +524,7 @@ export class CocosEventListener extends Component {
 
     onCommand(command: string) { /* ... */ }
     onScreenshot(result: any) { /* ... */ }
+    onGpxStarted(result: any) { /* ... */ }
     onGpxExported(result: any) { /* ... */ }
     onConnectionChanged(connected: boolean) { /* ... */ }
 }
@@ -626,12 +676,12 @@ The SDK maintains a boolean dictionary of button/action states. A button is set 
 
 ```csharp
 void Update() {
-if (bridge.IsActionPressed("jump")) {
-    TriggerJump();
-}
-if (bridge.IsActionPressed("fire")) {
-    TriggerShoot();
-}
+    if (bridge.IsActionPressed("jump")) {
+        TriggerJump();
+    }
+    if (bridge.IsActionPressed("fire")) {
+        TriggerShoot();
+    }
 }
 ```
 
@@ -639,10 +689,10 @@ if (bridge.IsActionPressed("fire")) {
 
 ```ts
 update(dt: number) {
-const bridge = this.node.getComponent(ControllerBridge)!;
-if (bridge.isActionPressed("jump")) {
-    this.triggerJump();
-}
+    const bridge = this.node.getComponent(ControllerBridge)!;
+    if (bridge.isActionPressed("jump")) {
+        this.triggerJump();
+    }
 }
 ```
 
@@ -757,6 +807,18 @@ The GPX API captures spatial paths during play sessions and exports them as `.gp
 
 #### Data Models
 
+##### GpxStartedResult (C#)
+| Prop | Type | Description |
+|------|------|------|
+| `Mode` | `string` | The GPX tracking mode ("manual" or "simulated"). |
+| `Error` | `string` | Non-empty error message string if session initialization failed on the server. |
+
+##### GpxStartedResult (TypeScript)
+| Prop | Type | Description |
+|------|------|------|
+| `mode` | `string` | The GPX tracking mode ("manual" or "simulated"). |
+| `error` | `string` (Optional) | Error message string if session initialization failed. |
+
 ##### GpxExportResult (C#)
 | Prop | Type | Description |
 |------|------|------|
@@ -799,6 +861,7 @@ public class UnityGpxTracker : MonoBehaviour
     void Start()
     {
         bridge = ControllerBridge.Instance;
+        bridge.OnGpxStarted += OnGpxStarted;
         bridge.OnGpxExported += OnGpxExported;
 
         // Start GPX in manual mode
@@ -831,6 +894,16 @@ public class UnityGpxTracker : MonoBehaviour
         return (lat, lon);
     }
 
+    private void OnGpxStarted(GpxStartedResult result)
+    {
+        if (!string.IsNullOrEmpty(result.Error))
+        {
+            Debug.LogError($"GPX Init failed: {result.Error}");
+            return;
+        }
+        Debug.Log($"GPX Session Started: mode={result.Mode}");
+    }
+
     private void OnGpxExported(GpxExportResult result)
     {
         if (!string.IsNullOrEmpty(result.Error))
@@ -858,6 +931,7 @@ public partial class GodotGpxTracker : Node3D
     public override void _Ready()
     {
         _bridge = GetNode<ControllerBridge>("ControllerBridge");
+        _bridge.GpxStarted += OnGpxStarted;
         _bridge.GpxExported += OnGpxExported;
 
         _bridge.StartGpx(OriginLat, OriginLon, manualLocation: true);
@@ -881,6 +955,16 @@ public partial class GodotGpxTracker : Node3D
         double metersPerDegreeLon = metersPerDegreeLat * Math.Cos(OriginLat * Math.PI / 180.0);
         double lon = OriginLon + (pos.X / metersPerDegreeLon);
         return (lat, lon);
+    }
+
+    private void OnGpxStarted(string mode, string error)
+    {
+        if (!string.IsNullOrEmpty(error))
+        {
+            GD.PrintErr($"GPX start failed: {error}");
+            return;
+        }
+        GD.Print($"GPX Session Started: mode={mode}");
     }
 
     private void OnGpxExported(string filePath, double distanceKm, string duration, string error)
@@ -911,6 +995,13 @@ export class CocosGpxTracker extends Component {
 
     onLoad() {
         this.bridge = this.node.scene.getComponentInChildren(ControllerBridge)!;
+        this.bridge.onGpxStarted = (res) => {
+            if (res.error) {
+                console.error(`GPX start failed: ${res.error}`);
+                return;
+            }
+            console.log(`GPX Session Started: mode=${res.mode}`);
+        };
         this.bridge.onGpxExported = (res) => {
             if (res.error) {
                 console.error(`Export failed: ${res.error}`);
@@ -1060,9 +1151,7 @@ Fired confirming a GPX session has successfully initialized.
 ```json
 {
   "type": "gpxStarted",
-  "timestamp": 1700000000110,
-  "mode": "manual", // "manual" or "simulated"
-  "error": ""       // Non-empty if initialization failed
+  "mode": "manual"
 }
 ```
 
@@ -1116,6 +1205,7 @@ The primary class that manages the WebSocket connection lifecycle, message parsi
     *   `event Action<string> OnCommand`
     *   `event Action<bool> OnConnectionStateChanged`
     *   `event Action<ScreenshotResult> OnScreenshot`
+    *   `event Action<GpxStartedResult> OnGpxStarted`
     *   `event Action<GpxExportResult> OnGpxExported`
 
 #### Public API (TypeScript)
@@ -1137,6 +1227,7 @@ The primary class that manages the WebSocket connection lifecycle, message parsi
     *   `onCommand: ((command: string) => void) | null`
     *   `onConnectionStateChanged: ((connected: boolean) => void) | null`
     *   `onScreenshot: ((result: ScreenshotResult) => void) | null`
+    *   `onGpxStarted: ((result: GpxStartedResult) => void) | null`
     *   `onGpxExported: ((result: GpxExportResult) => void) | null`
 
 #### Core Lifecycle Code Examples

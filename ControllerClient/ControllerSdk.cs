@@ -27,6 +27,7 @@ namespace ControllerClient
         public event Action<String> OnCommand;
         public event Action<bool> OnConnectionStateChanged;
         public event Action<ScreenshotResult> OnScreenshot;
+        public event Action<GpxStartedResult> OnGpxStarted;
         public event Action<GpxExportResult> OnGpxExported;
 
         public bool IsConnected => ws != null && ws.State == WebSocketState.Open;
@@ -351,9 +352,16 @@ namespace ControllerClient
                         break;
 
                     case "gpxStarted":
-                        // GPX session started — no event needed, but logged for debugging
                         var gpxStarted = System.Text.Json.JsonSerializer.Deserialize<GpxStartedPacket>(json, jsonOptions);
-                        Debug.WriteLine($"GPX started: mode={gpxStarted?.Mode}, error={gpxStarted?.Error}");
+                        if (gpxStarted != null)
+                        {
+                            var startedResult = new GpxStartedResult
+                            {
+                                Mode = gpxStarted.Mode,
+                                Error = gpxStarted.Error
+                            };
+                            Enqueue(() => OnGpxStarted?.Invoke(startedResult));
+                        }
                         break;
 
                     case "gpxExported":
